@@ -1,1 +1,2 @@
-# computer-vision-filter
+# Computer Vision Filter
+Group Members: Jennifer Lau and Steven Luong
