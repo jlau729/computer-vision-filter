@@ -3,7 +3,7 @@ from Helper import *
 
 
 ''' A CascadeDetector is a detection model that uses multiple
-    detector layers 
+    detector layers
 '''
 
 
