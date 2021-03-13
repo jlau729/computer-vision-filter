@@ -1,7 +1,8 @@
 from Helper import *
+import pickle
 
-WIDTH = 24
-HEIGHT = 24
+WIDTH = 19
+HEIGHT = 19
 
 ''' An AdaBoostDetector represents a detection model that uses
     an AdaBoost approach
@@ -12,6 +13,23 @@ class AdaBoostDetector:
 
     def __init__(self):
         self.h = []              # list of weak classifiers
+
+        # Trains the model with the given training data of images
+
+    def easy_train(self, data, features, num_rounds):
+        sample_w = initialize_weights(data)
+        for i in range(num_rounds):
+            normalize(sample_w)
+            curr_models = []
+            for feature in features:
+                model = make_model(feature, sample_w)
+                curr_models.append(model)
+            min_h = curr_models[0]
+            for h in curr_models:
+                if h.e < min_h.e:
+                    min_h = h
+            adjust_weights(min_h, sample_w)
+            self.h.append(min_h)
 
     # Trains the model with the given training data of images
     def train_model(self, data, features, num_rounds):
@@ -30,6 +48,7 @@ class AdaBoostDetector:
             adjust_weights(min_h, sample_w)
             self.h.append(min_h)
 
+
     # Classifies the given image based on the strong classifier
     # Returns 1 if a face, 0 otherwise
     #   x - image
@@ -45,3 +64,8 @@ class AdaBoostDetector:
         if tot_w >= tot_alpha / 2:
             return 1
         return 0
+
+    def save_model(self, i):
+        model = str("ada_model_" + i + ".pkl")
+        with open(model, "wb") as f:
+            pickle.dump(self, f)

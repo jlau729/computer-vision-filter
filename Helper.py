@@ -1,9 +1,11 @@
 from PIL import Image
 import numpy as np
 import math
+import glob
+import pickle as pk
 
-WIDTH = 24
-HEIGHT = 24
+WIDTH = 19
+HEIGHT = 19
 
 '''Region of an image with (x, y) as top left corner 
 '''
@@ -42,7 +44,9 @@ class WeakLearner:
     # If positive, return 1 and 0 otherwise
     #   x - data
     def classify(self, x):
-        integral_image = make_integral(Image.open(x, "RGB"))
+        im = Image.open(x)
+        np_im = np.asarray(im)
+        integral_image = make_integral(np_im)
         feature_value = self.feature.apply_feature(integral_image)
         predicted_y = 0
         if self.p == 1:
@@ -65,6 +69,7 @@ class Feature:
     def __init__(self, pos_rect, neg_rect):
         self.pos_rect = pos_rect                # list of rectangles that are added to sum
         self.neg_rect = neg_rect                # list of rectangles that are subtracted from sum
+        self.feature_values = None
 
     # Applies the feature to the given integral image
     # Returns the feature value
@@ -77,13 +82,27 @@ class Feature:
         return feature_sum
 
 
+def save_features(features):
+    with open("features.pkl", "wb") as f:
+        pk.dump(features, f)
+
+
+def load_features(model):
+    with open(model, "rb") as f:
+        return pk.load(f)
+
+
+def load_model(model):
+    with open(model, "rb") as f:
+        return pk.load(f)
+
+
 # Normalizes the given list of sample weights
 #   sample_w - list of sample weights
 def normalize(sample_w):
     tot = sum(sample_w.values())
     for k in sample_w:
         sample_w[k] = sample_w[k] / tot
-
 
 # Calculates and returns a tuple of (detection rate, false positive rate) on the given
 # data set
@@ -111,9 +130,13 @@ def validate(pos_data, neg_data, detector):
 #   data - tuple of (x, y) where x is the sample data and y is the correct result
 def get_feature_values(feature, data):
     feature_values = {}
+    count = 0
     for (x, y) in data:
-        integral_image = make_integral(Image.open(x, "RGB"))
+        im = Image.open(x)
+        np_im = np.asarray(im)
+        integral_image = make_integral(np_im)
         feature_values[(x, y)] = feature.apply_feature(integral_image)
+        count += 1
     sorted(feature_values.items(), key=lambda kv: kv[1])
     return feature_values
 
@@ -123,9 +146,8 @@ def get_feature_values(feature, data):
 #   feature - the feature to be optimized
 #   sample_w - the sample weights after applying the
 #               feature
-def make_model(feature, sample_w, feature_values):
+def make_model(feature, sample_w):
     ret = WeakLearner(feature)
-
     tot_pos = 0
     tot_neg = 0
     for k in sample_w:
@@ -139,7 +161,7 @@ def make_model(feature, sample_w, feature_values):
     curr_pos = 0
     curr_neg = 0
     p = 0
-    for k in feature_values:
+    for k in feature.feature_values:
         if k[1] == 1:
             curr_pos += sample_w[k]
         else:
@@ -154,11 +176,11 @@ def make_model(feature, sample_w, feature_values):
                     p = 1
                 else:
                     p = 0
-        ret.thresh = feature_values[min_sample]
-        ret.p = p
-        ret.alpha = math.log(1.0 / (min_error / (1.0 - min_error)), 10)
-        ret.e = min_error
-        return ret
+    ret.thresh = feature.feature_values[min_sample]
+    ret.p = p
+    ret.alpha = math.log(1.0 / (min_error / (1.0 - min_error)), 10)
+    ret.e = min_error
+    return ret
 
 
 # Adjusts the sample weights
@@ -212,20 +234,20 @@ def make_features():
                     bottom_right = Region(x + w, y + h, w, h)
 
                     if x + (2 * w) < WIDTH:
-                        features.append(Feature([rect], [right_rect]))
+                        # features.append(Feature([rect], [right_rect]))
                         features.append(Feature([right_rect], [rect]))
 
                     if y + (2 * h) < HEIGHT:
                         features.append(Feature([rect], [bottom_rect]))
-                        features.append(Feature([bottom_rect], [rect]))
+                        # features.append(Feature([bottom_rect], [rect]))
 
                     if x + (3 * w) < WIDTH:
                         features.append(Feature([right_rect], [rect, right_edge_rect]))
-                        features.append(Feature([rect, right_edge_rect], [right_rect]))
+                        # features.append(Feature([rect, right_edge_rect], [right_rect]))
 
                     if x + (2 * w) < WIDTH and y + (2 * h) < HEIGHT:
                         features.append(Feature([rect, bottom_right], [right_rect, bottom_rect]))
-                        features.append(Feature([right_rect, bottom_rect], [rect, bottom_right]))
+                        # features.append(Feature([right_rect, bottom_rect], [rect, bottom_right]))
                     y += 1
                 x += 1
     return features
@@ -233,9 +255,8 @@ def make_features():
 
 # Makes and return an integral image for the given image
 #   im - image
-def make_integral(im):
-    integral_im = np.zeros(im.size)
-    im_data = np.array(im)
+def make_integral(im_data):
+    integral_im = np.zeros(im_data.shape)
 
     for row in range(im_data.shape[0]):
         for col in range(im_data.shape[1]):
@@ -246,5 +267,5 @@ def make_integral(im):
                 curr_sum += integral_im[row][col - 1]
             if row != 0 and col != 0:
                 curr_sum -= integral_im[row - 1][col - 1]
-            integral_im[row][col] = sum
+            integral_im[row][col] = curr_sum
     return integral_im
