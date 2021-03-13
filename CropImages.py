@@ -10,6 +10,8 @@ im = Image.open("uw.jpg") # image we want to censor
 
 sticker = Image.open("pokeball.png") # sticker we want to use to censor
 # size of image we potentially want to cover with sticker
+newsize = (200, 200) # (width, height) can be changed to the size of face we want to cover
+sticker = sticker.resize(newsize)
 cropped_width = sticker.width
 cropped_height = sticker.height
 

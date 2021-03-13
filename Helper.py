@@ -132,10 +132,7 @@ def get_feature_values(feature, data):
     feature_values = {}
     count = 0
     for (x, y) in data:
-        im = Image.open(x)
-        np_im = np.asarray(im)
-        integral_image = make_integral(np_im)
-        feature_values[(x, y)] = feature.apply_feature(integral_image)
+        feature_values[(x, y)] = feature.apply_feature(file_to_integral[x])
         count += 1
     sorted(feature_values.items(), key=lambda kv: kv[1])
     return feature_values
