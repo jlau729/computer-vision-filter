@@ -6,7 +6,7 @@ import pickle as pk
 
 WIDTH = 19
 HEIGHT = 19
-
+file_to_integral = {}
 '''Region of an image with (x, y) as top left corner 
 '''
 
@@ -69,7 +69,7 @@ class Feature:
     def __init__(self, pos_rect, neg_rect):
         self.pos_rect = pos_rect                # list of rectangles that are added to sum
         self.neg_rect = neg_rect                # list of rectangles that are subtracted from sum
-        self.feature_values = None
+        self.feature_values = {}
 
     # Applies the feature to the given integral image
     # Returns the feature value
@@ -82,27 +82,56 @@ class Feature:
         return feature_sum
 
 
-def save_features(features):
-    with open("features.pkl", "wb") as f:
-        pk.dump(features, f)
-
-
-def load_features(model):
-    with open(model, "rb") as f:
-        return pk.load(f)
-
-
 def load_model(model):
     with open(model, "rb") as f:
         return pk.load(f)
 
 
+def populate_integral_image():
+    for currentFile in glob.glob("./faces/train/face/*.pgm"):
+        im = Image.open(currentFile)
+        np_im = np.asarray(im)
+        integral_image = make_integral(np_im)
+        file_to_integral[currentFile] = integral_image
+    for currentFile in glob.glob("./faces/train/non-face/*.pgm"):
+        im = Image.open(currentFile)
+        np_im = np.asarray(im)
+        integral_image = make_integral(np_im)
+        file_to_integral[currentFile] = integral_image
+
+
+# Makes the feature matrix where each row is one feature and each column is a feature value
+# for a sample data
+# Returns a tuple (feature matrix, sample y)
+#   features - list of features
+#   data - sample data
+def make_feature_m(features, data):
+
+    # Create matrix where each row is a feature and each column is the feature value
+    feature_values = np.zeros(len(features), len(data))
+
+    # Array that saves expected values for each sample data
+    sample_y = np.array(len(data))
+    for i in range(len(data)):
+        sample_y[i] = data[i][1]
+
+    i = 0
+    for feature in features:
+        j = 0
+        for (x, y) in data:
+            feature_values[i][j] = feature.apply_feature(file_to_integral[x])
+            j += 1
+        i += 1
+    return feature_values, sample_y
+
+
 # Normalizes the given list of sample weights
 #   sample_w - list of sample weights
 def normalize(sample_w):
-    tot = sum(sample_w.values())
-    for k in sample_w:
-        sample_w[k] = sample_w[k] / tot
+    tot = sum(sample_w)
+    for i in range(len(sample_w)):
+        sample_w[i] = sample_w[i] / tot
+
 
 # Calculates and returns a tuple of (detection rate, false positive rate) on the given
 # data set
@@ -125,17 +154,15 @@ def validate(pos_data, neg_data, detector):
     return detect_count / len(pos_data), error_count / len(neg_data)
 
 
-# Applies the feature to the given data and returns a map of samples to weights
-#   feature - the feature to be applied
-#   data - tuple of (x, y) where x is the sample data and y is the correct result
-def get_feature_values(feature, data):
-    feature_values = {}
-    count = 0
-    for (x, y) in data:
-        feature_values[(x, y)] = feature.apply_feature(file_to_integral[x])
-        count += 1
-    sorted(feature_values.items(), key=lambda kv: kv[1])
-    return feature_values
+# Initializes the sorted feature to feature values mapping for each feature
+#   feature - list of features
+#   m - matrix where number of rows is number of features and number of columns
+#       is number of sample data
+def get_feature_values(features, m):
+    for i in range(m.shape[0]):
+        for j in range(m.shape[1]):
+            features[i].feature_values[j] = m[i][j]
+        sorted(features[i].feature_values.items(), key=lambda kv: kv[1])
 
 
 # Looks for optimal threshold and polarity
@@ -143,32 +170,32 @@ def get_feature_values(feature, data):
 #   feature - the feature to be optimized
 #   sample_w - the sample weights after applying the
 #               feature
-def make_model(feature, sample_w):
+def make_model(feature, sample_w, sample_y):
     ret = WeakLearner(feature)
     tot_pos = 0
     tot_neg = 0
-    for k in sample_w:
-        if k[1] == 1:
-            tot_pos += sample_w[k]
+    for i in range(len(sample_w)):
+        if sample_y[i] == 1:
+            tot_pos += sample_w[i]
         else:
-            tot_neg += sample_w[k]
+            tot_neg += sample_w[i]
 
     min_error = tot_pos + tot_neg
     min_sample = None
     curr_pos = 0
     curr_neg = 0
     p = 0
-    for k in feature.feature_values:
-        if k[1] == 1:
-            curr_pos += sample_w[k]
+    for i in feature.feature_values:
+        if sample_y[i] == 1:
+            curr_pos += sample_w[i]
         else:
-            curr_neg += sample_w[k]
+            curr_neg += sample_w[i]
             err_1 = curr_neg + (tot_pos - curr_pos)
             err_2 = curr_pos + (tot_neg - curr_neg)
             error = min(err_1, err_2)
             if error < min_error:
                 min_error = error
-                min_sample = k
+                min_sample = i
                 if error == err_1:
                     p = 1
                 else:
@@ -204,12 +231,12 @@ def initialize_weights(data):
         else:
             tot_neg += 1
 
-    w = {}
+    w = []
     for (x, y) in data:
         if y == 1:
-            w[(x, y)] = 1.0 / (2 * tot_pos)
+            w.append(1.0 / (2 * tot_pos))
         else:
-            w[(x, y)] = 1.0 / (2 * tot_neg)
+            w.append(1.0 / (2 * tot_neg))
     return w
 
 

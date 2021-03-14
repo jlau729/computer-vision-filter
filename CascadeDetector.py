@@ -1,8 +1,6 @@
 from AdaBoostDetector import AdaBoostDetector
 from Helper import *
 import pickle
-import os
-
 
 ''' A CascadeDetector is a detection model that uses multiple
     detector layers
@@ -26,19 +24,14 @@ class CascadeDetector:
         # Checks if features have been saved and uses it
         # If do not want to sue saved features, comment out this
         # statement and fix indent in the code in the else branch
-        if os.path.exists("./features.pkl"):
-            features = load_model("./features.pkl")
-        else:
-            features = make_features()
-            for feature in features:
-                feature.feature_values = get_feature_values(feature, data)
-            save_features(features)
+
+        features = make_features()
+        populate_integral_image()
         for i in range(3):  # check if current false positive rate is
             stage = AdaBoostDetector()
             stage.easy_train(pos_data + neg_data, features, layer_size[i])
             neg_data = [(x, y) for (x, y) in neg_data if self.classify(x) == 1]
             self.stages.append(stage)
-
 
     # Trains the model
     #   data - data

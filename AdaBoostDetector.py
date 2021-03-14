@@ -1,4 +1,5 @@
 from Helper import *
+from sklearn.feature_selection import SelectPercentile, f_classif
 import pickle
 
 WIDTH = 19
@@ -21,8 +22,22 @@ class AdaBoostDetector:
         for i in range(num_rounds):
             normalize(sample_w)
             curr_models = []
+
+            # Get matrix of feature to feature values along with expected y values
+            feature_m, y = make_feature_m(features, data)
+
+            # Select features more likely to be helpful
+            indices = SelectPercentile(f_classif, percentile=10).fit(feature_m.T, y)\
+                .get_support(indices=True)
+
+            # Change features to only contain the helpful features corresponding to
+            # the indices array
+            features = features[indices]
+
+            # Assign feature values to the respective feature and sort them
+            get_feature_values(features, feature_m)
             for feature in features:
-                model = make_model(feature, sample_w)
+                model = make_model(feature, sample_w, y)
                 curr_models.append(model)
             min_h = curr_models[0]
             for h in curr_models:
@@ -47,7 +62,6 @@ class AdaBoostDetector:
                     min_h = h
             adjust_weights(min_h, sample_w)
             self.h.append(min_h)
-
 
     # Classifies the given image based on the strong classifier
     # Returns 1 if a face, 0 otherwise
