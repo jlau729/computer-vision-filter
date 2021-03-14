@@ -26,7 +26,6 @@ class CascadeDetector:
         # statement and fix indent in the code in the else branch
 
         features = make_features()
-        populate_integral_image()
         for i in range(3):  # check if current false positive rate is
             stage = AdaBoostDetector()
             stage.easy_train(pos_data + neg_data, features, layer_size[i])

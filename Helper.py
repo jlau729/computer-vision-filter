@@ -89,11 +89,13 @@ def load_model(model):
 
 def populate_integral_image():
     for currentFile in glob.glob("./faces/train/face/*.pgm"):
+    #for currentFile in glob.glob("./small-faces/face/*.pgm"): # smaller dataset to test code
         im = Image.open(currentFile)
         np_im = np.asarray(im)
         integral_image = make_integral(np_im)
         file_to_integral[currentFile] = integral_image
     for currentFile in glob.glob("./faces/train/non-face/*.pgm"):
+    #for currentFile in glob.glob("./small-faces/non-face/*.pgm"): # smaller dataset to test code
         im = Image.open(currentFile)
         np_im = np.asarray(im)
         integral_image = make_integral(np_im)
@@ -108,12 +110,12 @@ def populate_integral_image():
 def make_feature_m(features, data):
 
     # Create matrix where each row is a feature and each column is the feature value
-    feature_values = np.zeros(len(features), len(data))
+    feature_values = np.zeros((len(features), len(data)))
 
     # Array that saves expected values for each sample data
-    sample_y = np.array(len(data))
+    sample_y = []
     for i in range(len(data)):
-        sample_y[i] = data[i][1]
+        sample_y.append(data[i][1])
 
     i = 0
     for feature in features:
@@ -161,7 +163,8 @@ def validate(pos_data, neg_data, detector):
 def get_feature_values(features, m):
     for i in range(m.shape[0]):
         for j in range(m.shape[1]):
-            features[i].feature_values[j] = m[i][j]
+            temp = m[i][j]
+            features[i].feature_values[j] = temp
         sorted(features[i].feature_values.items(), key=lambda kv: kv[1])
 
 
@@ -210,13 +213,14 @@ def make_model(feature, sample_w, sample_y):
 # Adjusts the sample weights
 #   feature - the feature that has been applied
 #   sample_w - the sample weights
-def adjust_weights(model, sample_w):
-    for k in sample_w:
-        predicted_y = model.classify(k)
+#   data - images
+def adjust_weights(model, sample_w, data):
+    for i in range(len(sample_w)):
+        predicted_y = model.classify(data[i][0])
         sample_res = 1
-        if predicted_y == k[1]:
+        if predicted_y == data[i][1]:
             sample_res = 0
-        sample_w[k] = sample_w[k] * math.pow((model.e * 1.0 / (1 - model.e)), 1 - sample_res)
+        sample_w[i] = sample_w[i] * math.pow((model.e * 1.0 / (1 - model.e)), 1 - sample_res)
 
 
 # Initializes and returns a map of sample weight pairs
