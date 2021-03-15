@@ -35,10 +35,10 @@ class WeakLearner:
 
     def __init__(self, feature):
         self.feature = feature              # feature
-        self.thresh = 0                     # threshold
-        self.p = 0                          # polarity
-        self.alpha = 0                      # alpha
-        self.e = 0                          # error
+        self.thresh = 0.0                     # threshold
+        self.p = 0.0                          # polarity
+        self.alpha = 0.0                      # alpha
+        self.e = 0.0                          # error
 
     # Classifies the data and returns the predicted results
     # If positive, return 1 and 0 otherwise
@@ -183,6 +183,8 @@ def make_model(feature, sample_w, sample_y):
         else:
             tot_neg += sample_w[i]
 
+    print("Total Positive: " + str(tot_pos))
+    print("Total negative: " + str(tot_neg))
     min_error = tot_pos + tot_neg
     min_sample = None
     curr_pos = 0
@@ -205,7 +207,10 @@ def make_model(feature, sample_w, sample_y):
                     p = 0
     ret.thresh = feature.feature_values[min_sample]
     ret.p = p
-    ret.alpha = math.log(1.0 / (min_error / (1.0 - min_error)), 10)
+    print("Min error value: " + str(min_error))
+    correct_rate = math.log(1.0 - min_error, 10)
+    denom = math.log(min_error, 10) - correct_rate
+    ret.alpha = math.log(1.0, 10) - denom
     ret.e = min_error
     return ret
 
