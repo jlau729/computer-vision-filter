@@ -1,0 +1,8 @@
+For some reason, I had trouble using opencv on attu so I had to run it locally on my mac.
+The normal way of running python on my mac of using "python Main.py" had trouble finding and using the opencv library
+so I had to use the following commands to use and install the python libraries
+
+python -m venv work
+source work/bin/activate
+pip install numpy
+pip install opencv-python==4.1.2.30
