@@ -3,29 +3,20 @@ from CascadeDetector import *
 Main file that trains the face detection
 '''
 
-
+# Creates the model
 def create_model():
     image_list = []
     for currentFile in glob.glob("./faces/train/face/*.pgm"):
-    #for currentFile in glob.glob("./small-faces/face/*.pgm"):
         image_list.append((currentFile, 1))
     for currentFile in glob.glob("./faces/train/non-face/*.pgm"):
-    #for currentFile in glob.glob("./small-faces/non-face/*.pgm"):
         image_list.append((currentFile, 0))
-    
-    '''
-    cascade_detector = CascadeDetector()
-    cascade_detector.easy_train(image_list, [2, 9, 12])
-    cascade_detector.save_model()
-    '''
-
     features = make_features()
     stage = AdaBoostDetector()
-    stage.easy_train(image_list, features, 10)
+    stage.train_model(image_list, features, 10)
     stage.save_model()
     return stage
 
-
+# Tests the model
 def test_model(model_detector):
     count = 0.0
     tot = 0.0
@@ -49,6 +40,4 @@ def test_model(model_detector):
 
 populate_integral_image()
 detector = create_model()
-# detector.save_model() # save cascade model
-# res = test_model(detector) # test cascade model
 print("Finished")

@@ -12,6 +12,7 @@ class CascadeDetector:
     def __init__(self):
         self.stages = []            # list of detectors
 
+    # Trains model with three layers to make training time quicker
     def easy_train(self, data, layer_size):
         pos_data = []
         neg_data = []
@@ -28,7 +29,7 @@ class CascadeDetector:
         features = make_features()
         for i in range(3):  # check if current false positive rate is
             stage = AdaBoostDetector()
-            stage.easy_train(pos_data + neg_data, features, layer_size[i])
+            stage.train_model(pos_data + neg_data, features, layer_size[i])
             neg_data = [(x, y) for (x, y) in neg_data if self.classify(x) == 1]
             self.stages.append(stage)
 

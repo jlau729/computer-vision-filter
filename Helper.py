@@ -69,19 +69,19 @@ class Feature:
     def __init__(self, pos_rect, neg_rect):
         self.pos_rect = pos_rect                # list of rectangles that are added to sum
         self.neg_rect = neg_rect                # list of rectangles that are subtracted from sum
-        self.feature_values = {}
+        self.feature_values = {}                # map of feature values
 
     # Applies the feature to the given integral image
     # Returns the feature value
     def apply_feature(self, integral_image):
-        feature_sum = 0
+        feature_sum = 0.0
         for region in self.pos_rect:
             feature_sum += region.get_sum(integral_image)
         for region in self.neg_rect:
             feature_sum -= region.get_sum(integral_image)
         return feature_sum
 
-
+# Loads file with given name
 def load_model(model):
     with open(model, "rb") as f:
         return pk.load(f)
@@ -89,13 +89,11 @@ def load_model(model):
 
 def populate_integral_image():
     for currentFile in glob.glob("./faces/train/face/*.pgm"):
-    #for currentFile in glob.glob("./small-faces/face/*.pgm"): # smaller dataset to test code
         im = Image.open(currentFile)
         np_im = np.asarray(im)
         integral_image = make_integral(np_im)
         file_to_integral[currentFile] = integral_image
     for currentFile in glob.glob("./faces/train/non-face/*.pgm"):
-    #for currentFile in glob.glob("./small-faces/non-face/*.pgm"): # smaller dataset to test code
         im = Image.open(currentFile)
         np_im = np.asarray(im)
         integral_image = make_integral(np_im)
@@ -173,10 +171,11 @@ def get_feature_values(features, m):
 #   feature - the feature to be optimized
 #   sample_w - the sample weights after applying the
 #               feature
+#   sample_y - list of sample y-values
 def make_model(feature, sample_w, sample_y):
     ret = WeakLearner(feature)
-    tot_pos = 0
-    tot_neg = 0
+    tot_pos = 0.0
+    tot_neg = 0.0
     for i in range(len(sample_w)):
         if sample_y[i] == 1:
             tot_pos += sample_w[i]
@@ -187,8 +186,8 @@ def make_model(feature, sample_w, sample_y):
     print("Total negative: " + str(tot_neg))
     min_error = tot_pos + tot_neg
     min_sample = None
-    curr_pos = 0
-    curr_neg = 0
+    curr_pos = 0.0
+    curr_neg = 0.0
     p = 0
     for i in feature.feature_values:
         if sample_y[i] == 1:
@@ -208,9 +207,10 @@ def make_model(feature, sample_w, sample_y):
     ret.thresh = feature.feature_values[min_sample]
     ret.p = p
     print("Min error value: " + str(min_error))
-    correct_rate = math.log(1.0 - min_error, 10)
-    denom = math.log(min_error, 10) - correct_rate
-    ret.alpha = math.log(1.0, 10) - denom
+    beta = min_error / (1 - min_error)
+    if beta == 0:
+        beta = math.pow(1, -10)
+    ret.alpha = math.log2(1.0 / beta)
     ret.e = min_error
     return ret
 
@@ -225,7 +225,7 @@ def adjust_weights(model, sample_w, data):
         sample_res = 1
         if predicted_y == data[i][1]:
             sample_res = 0
-        sample_w[i] = sample_w[i] * math.pow((model.e * 1.0 / (1 - model.e)), 1 - sample_res)
+        sample_w[i] = sample_w[i] * math.pow((model.e / (1.0 - model.e)), 1.0 - sample_res)
 
 
 # Initializes and returns a map of sample weight pairs
@@ -250,8 +250,6 @@ def initialize_weights(data):
 
 
 # Makes and returns a list of features
-#   width - width of image
-#   height - height of image
 def make_features():
     features = []
     for w in range(1, WIDTH + 1):
@@ -287,7 +285,7 @@ def make_features():
 
 
 # Makes and return an integral image for the given image
-#   im - image
+#   im_data - image in the form of a matrix
 def make_integral(im_data):
     integral_im = np.zeros(im_data.shape)
 

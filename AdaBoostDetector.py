@@ -15,9 +15,8 @@ class AdaBoostDetector:
     def __init__(self):
         self.h = []              # list of weak classifiers
 
-        # Trains the model with the given training data of images
-
-    def easy_train(self, data, features, num_rounds):
+    # Trains the model with the given training data of image
+    def train_model(self, data, features, num_rounds):
         sample_w = initialize_weights(data)
         for i in range(num_rounds):
             normalize(sample_w)
@@ -32,7 +31,6 @@ class AdaBoostDetector:
 
             # Change features to only contain the helpful features corresponding to
             # the indices array
-            #features = features[indices]
             features_updated = np.array(features)[indices]
             feature_m = feature_m[indices]
 
@@ -48,23 +46,6 @@ class AdaBoostDetector:
                         min_h = h
                 adjust_weights(min_h, sample_w, data)
                 self.h.append(min_h)
-
-    # Trains the model with the given training data of images
-    def train_model(self, data, features, num_rounds):
-        sample_w = initialize_weights(data)
-        for i in range(num_rounds):
-            normalize(sample_w)
-            curr_models = []
-            for feature in features:
-                feature_values = get_feature_values(feature, data)
-                model = make_model(feature, sample_w, feature_values)
-                curr_models.append(model)
-            min_h = curr_models[0]
-            for h in curr_models:
-                if h.e < min_h.e:
-                    min_h = h
-            adjust_weights(min_h, sample_w)
-            self.h.append(min_h)
 
     # Classifies the given image based on the strong classifier
     # Returns 1 if a face, 0 otherwise
